@@ -41,21 +41,26 @@ cp $SRC/libclang_rt.tsan_cxx-x86_64.a $RES/libclang_rt.tsan_cxx.a
 
 ## 4. Run the tests
 
+Globs every `aba_*.c` test in the directory, so new tests run automatically —
+nothing to edit here when a test file gets added.
+
 ```bash
 CLANG=build/bin/clang
 T=compiler-rt/test/tsan
-for t in aba_heap_reuse aba_hazard_pointer aba_epoch_reclamation; do
+for f in $T/aba_*.c; do
+  t=$(basename "$f" .c)
   echo "=== $t ==="
-  $CLANG -fsanitize=thread -O1 -g $T/$t.c -o /tmp/$t && /tmp/$t
+  $CLANG -fsanitize=thread -O1 -g "$f" -o /tmp/$t && /tmp/$t
 done
 ```
 
-Expected:
+Expected (true positives fire, true negatives print only `done`):
 
-- `aba_heap_reuse` (true positive) prints
-  `WARNING: ThreadSanitizer: ABA detected (heap object identity change)`
-- `aba_hazard_pointer` and `aba_epoch_reclamation` (true negatives) print
-  only `done` — no warning.
+- `aba_heap_reuse` (TP, heap) — `WARNING: ThreadSanitizer: ABA detected ...`
+- `aba_hazard_pointer` (TN, heap) — `done`
+- `aba_epoch_reclamation` (TN, heap) — `done`
+- `aba_pool_reuse` (TP, custom-allocator annotation) — `WARNING: ThreadSanitizer: ABA detected ...`
+- `aba_pool_hazard` (TN, custom-allocator annotation) — `done`
 
 ## Known limitations (by design)
 
